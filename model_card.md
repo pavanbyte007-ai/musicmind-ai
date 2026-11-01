@@ -8,11 +8,20 @@
 
 ## 2. Intended Use  
 
+**Goal / task.** Given one listener's taste (favorite genre and mood, plus target energy, valence and tempo), pick the 5 songs from an 18-song catalog that fit best, and say why.
+
 Vibe Matcher suggests the top 5 songs from an 18-song catalog for one listener at a time.
 
 - **What it recommends:** songs whose genre, mood, energy, valence (how positive it sounds) and tempo are close to what the listener asked for.
 - **Assumptions about the user:** they can name a favorite genre and mood and pick target energy, valence and tempo, and their taste is one fixed point (not a mix of different tastes).
 - **Who it is for:** classroom exploration. It is a simulation to learn how recommenders work, not a tool for real listeners.
+
+**Not intended for:**
+
+- Real listeners or a real music app. The catalog is 18 songs, so most tastes have almost nothing to match.
+- Judging how good a song or artist is, or deciding which artists get exposure. The scores only measure closeness to a typed-in profile, and the song data is hand-made.
+- Guessing a person's mood or taste from their behavior. It never looks at listening history, likes or skips.
+- Anything that needs fairness across genres. Lofi has 3 songs and most genres have 1, so it treats listeners unequally by design.
 
 ---
 
@@ -48,13 +57,12 @@ Think of it as a points game. The listener tells the system what they want, and 
 
 ## 5. Strengths  
 
-Where does your system seem to work well  
-
-Prompts:  
-
-- User types for which it gives reasonable results  
-- Any patterns you think your scoring captures correctly  
-- Cases where the recommendations matched your intuition  
+- **Tastes with several matching songs.** The Chill Lo-fi profile gets a sensible top 3 (Midnight Coding 5.92, Library Rain 5.91, Focus Flow 4.93), because the catalog has 3 lofi and 3 chill songs.
+- **Different tastes give different lists.** The lofi list shares no songs with the pop or rock lists. The pop and rock lists share only three high-energy songs (Gym Hero, Storm Runner and Laser Garden).
+- **Close numbers can find songs outside the favorite genre.** The lofi listener gets Coffee Shop Stories (jazz) at #5 and Spacewalk Thoughts (ambient) at #4, because their energy, valence and tempo are close.
+- **Every result can be explained.** Each song lists the points it earned, so an odd result like Gym Hero for the rock listener can be traced to one mood match.
+- **It is repeatable.** The same profile always gives the same list, because ties are broken by song id.
+- **It fails gently.** A genre that is not in the catalog ("k-pop") still returns sensible songs, and a tempo outside the catalog range (200 BPM) does not break the scores.
 
 ---
 
@@ -75,7 +83,7 @@ Prompts:
 
 ## 7. Evaluation  
 
-I tested three user profiles, three edge cases, and two experiments on the 18-song catalog. The two unit tests in `tests/test_recommender.py` pass. They only check that results come back sorted and that an explanation exists, so the profile results below were checked by running the recommender and reading the scores.
+I tested three user profiles, three edge cases, and two experiments on the 18-song catalog. The two unit tests in `tests/test_recommender.py` pass. They only check that results come back sorted and that an explanation exists, so the profile results below were checked by running the recommender and reading the scores. Everything below can be reproduced by running `python scripts/evaluate.py` from the project root (the output is the same every time).
 
 ### Results for three profiles
 
@@ -135,37 +143,30 @@ Result: mood helps the pop and lofi profiles but hurts the rock profile. It is t
 
 ## 8. Future Work  
 
-Ideas for how you would improve the model next.  
-
-Prompts:  
-
-- Additional features or preferences  
-- Better ways to explain recommendations  
-- Improving diversity among the top results  
-- Handling more complex user tastes  
+- **Partial credit for similar labels.** Let "pop" and "indie pop", "rock" and "metal", or "chill" and "relaxed" earn some points instead of none. This would help Iron Tide, which sounds the most like what the rock listener asked for but only ranks #3.
+- **Better use of the features.** Give valence more weight, since it is what separates Gym Hero from Iron Tide, and try danceability and acousticness. The `likes_acoustic` field exists in the profile but is not used in scoring yet. Energy and tempo overlap, so one of them could count for less.
+- **Better explanations.** Show each score as a share of the maximum, and explain why a song did not make the list (for example, why Iron Tide ranked below Gym Hero).
+- **More variety in the top results.** Avoid repeating an artist. The lofi top 3 includes two songs by LoRoom (Midnight Coding and Focus Flow).
+- **More complex tastes.** Allow a profile with more than one taste, use a bigger catalog with measured audio features, and eventually learn from likes and skips.
+- **Tests.** Add tests for exact scores, ranking order and tie-breaking, since the current two tests only check sorting and that an explanation exists.
 
 ---
 
 ## 9. Personal Reflection  
 
-**What I learned.** A recommender is a short chain: data, then features, then a score, then a ranking, then an explanation. Even a tiny version forces real decisions about which features to use, how to compare them, and how much each one counts. The weights turned out to be opinions, not facts. Making genre worth 2 points and mood 1 decided whether Gym Hero or Rooftop Lights ranked second for the pop listener. Printing the "because" reasons for every song made the system much easier to understand and debug, because I could see exactly where each point came from.
+**Understanding recommenders.** I started by researching how Spotify, YouTube and TikTok recommend content and the difference between content-based and collaborative filtering. I built a content-based recommender because I only have song attributes, not listening data from many users.
 
-**What surprised me.**
-- A bright pop workout song, Gym Hero, showed up at #2 for a rock listener who wanted something dark, only because its mood label matched. The song that sounds most like what they asked for, Iron Tide, was #3.
-- Removing the mood rule made the rock results better but the pop results worse, so one rule helped some listeners and hurt others.
-- Doubling the energy weight did not change the #1 song for any profile, and it did not fix the Gym Hero problem. Valence was the feature that could, and it has the smallest spread across songs.
-- The lo-fi listener got a jazz song (Coffee Shop Stories) at #5 just because its numbers were close, which felt like a real "discovery".
+**Dataset analysis.** I went through `songs.csv` column by column. Energy, tempo and acousticness move together, while valence is what separates songs with similar energy (Gym Hero vs. Storm Runner). The catalog had no sad, classical or metal songs, so I expanded it from 10 to 18 songs to cover those gaps.
 
-**Challenges.**
-- The starter code had two designs side by side: song and profile objects (used by the tests) and plain dictionaries (used by the command-line runner). I kept one scoring function and made the object version reuse it.
-- With only 18 songs and no real listeners, it was hard to tell whether a set of weights was "right". I could only check whether the results matched my own sense of how the songs sound.
-- All the song numbers and mood labels are my own estimates, so the results can only be as good as those choices.
+**Algorithm and weight decisions.** I designed the score as a points system: genre 2, mood 1, and energy, valence and tempo by closeness to the listener's targets, with tempo scaled by its range so it counts like the others. I compared an earlier mood-heavy weighting with the final genre 2 / mood 1 version and chose the final one. I knew it would rank Gym Hero (pop, intense) above Rooftop Lights (indie pop, happy) for a pop/happy listener.
 
-**What I would improve next.**
-- Let similar labels count partly (pop and indie pop, chill and relaxed) instead of all or nothing.
-- Give valence more say, and test danceability and acousticness, since tempo and energy partly repeat each other.
-- Avoid showing the same artist twice and mix in some variety in the top results.
-- Use a bigger catalog, allow profiles with more than one taste, and eventually learn from likes and skips instead of a typed-in profile.
-- Add tests that check exact scores and ranking order.
+**Testing and evaluation.** I defined three profiles (High-Energy Pop, Chill Lo-fi, Deep Intense Rock), three edge cases, and two experiments (energy weight doubled with genre halved, and mood removed). The results were more interesting than I expected:
+- Gym Hero showed up at #2 for the rock listener only because its mood matched, while Iron Tide, the closest sound match, was #3.
+- Removing mood fixed the rock list but made the pop list worse.
+- Doubling energy did not change the #1 song for any profile.
+- Valence varies the least across songs, so it has the weakest say, even though it separates bright songs from dark ones.
+- Genre and mood together are worth up to 3 of the 6 points, so a song with the right labels can beat one that sounds right.
 
-**How this changed how I see music apps.** A "recommended for you" list is the result of choices someone made about what to measure and how much it matters. When an app suggests something odd, I now wonder which label or number pulled it in, and whose choices shaped that.
+**Using AI assistance.** I used an AI coding assistant to implement the functions, the command-line runner and the evaluation script, and to help draft the documentation. I directed it step by step. I set the formula and the test profiles, had it propose changes before it touched any file, and required the tests and the program to actually run, with real output, before any results went into this card. Reviewing its work caught real problems: a README claim that was wrong (pop has two songs, not one), a mismatch between the README run command and the import in `main.py`, and a starter test that passed only by accident. I made the design decisions and checked the results, and the assistant did much of the typing.
+
+**Next.** I would give partial credit for similar labels (rock and metal, chill and relaxed), put more weight on valence, avoid repeating an artist in the top results, and add tests that check exact scores.

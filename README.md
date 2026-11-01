@@ -147,9 +147,10 @@ Top 5 recommendations:
 ## Experiments You Tried
 
 - **Genre worth more than mood.** In the final points system, genre is worth 2 and mood 1. For the pop/happy profile, Gym Hero (pop, intense) scores 4.73 and ranks above Rooftop Lights (indie pop, happy) at 3.91. In an earlier version where mood counted more than genre (mood 0.30, genre 0.10), the order was the other way round, and the happy song won. Which one is better depends on whether a genre label or a mood matters more to the listener.
-- **Three different users.** With the 18-song catalog, a chill lofi profile (energy 0.38, valence 0.58, 76 BPM) gets Midnight Coding, Library Rain and Focus Flow on top, and an intense rock profile (energy 0.9, valence 0.5, 145 BPM) gets Storm Runner first. The top lists barely overlap, so the profile can tell these tastes apart.
-- **Genre is too strict.** For the intense rock profile, the metal song Iron Tide only ranks 5th because "metal" does not equal "rock".
-- Not yet tried: other weights for the numeric features, or adding danceability and acousticness.
+- **Three different users.** With the 18-song catalog, a High-Energy Pop profile gets Sunrise City first, a Chill Lo-fi profile (energy 0.38, valence 0.58, 76 BPM) gets Midnight Coding, Library Rain and Focus Flow on top, and a Deep Intense Rock profile (energy 0.92, valence 0.35, 150 BPM) gets Storm Runner first. The lofi list shares no songs with the other two, so the profile can tell these tastes apart.
+- **Genre is too strict.** For the Deep Intense Rock profile, the metal song Iron Tide (the closest match in sound) only ranks 3rd, behind Gym Hero (pop), because "metal" does not equal "rock" and "angry" does not equal "intense".
+- **Two weight experiments.** Doubling the energy weight and halving the genre weight did not change the #1 song for any profile. Removing mood matching improved the rock list but made the pop list worse. Full results are in Section 7 of the [model card](model_card.md), and you can reproduce them with `python scripts/evaluate.py`.
+- Not yet tried: adding danceability and acousticness to the score.
 
 ---
 
@@ -163,20 +164,17 @@ Top 5 recommendations:
 - Danceability and acousticness are not used in the score.
 - It does not understand lyrics or language, and the results can show the same artist twice.
 
-You will go deeper on this in your model card.
+More detail on biases and evaluation is in the [model card](model_card.md).
 
 ---
 
 ## Reflection
 
-Read and complete `model_card.md`:
+[**Model Card**](model_card.md) (full reflection in Section 9)
 
-[**Model Card**](model_card.md)
+**How recommenders turn data into predictions.** My recommender turns each song's features and a typed-in listener profile into a score, then sorts the songs by that score. Even this small version produced believable lists, such as a sensible lofi top 3, because "closer to what you asked for" is a useful rule. But the weights are opinions, not facts. Making genre worth 2 points and mood 1 put Gym Hero (pop, intense) above Rooftop Lights (indie pop, happy) for a pop/happy listener, and one mood point was enough to put a bright pop song in a rock listener's top 5. Running different profiles and experiments showed me that every rule helps some listeners and hurts others.
 
-Write 1 to 2 paragraphs here about what you learned:
-
-- about how recommenders turn data into predictions
-- about where bias or unfairness could show up in systems like this
+**Where bias or unfairness can show up.** The score gives genre an exact-match 2 of 6 points, and genre and mood labels together can outweigh how a song actually sounds. The catalog is small and uneven: a lofi fan has 3 songs to match, a rock or jazz fan has 1, and a genre that is missing earns nothing. Valence, the feature that separates bright songs from dark ones, varies the least across songs, so it has the weakest say. The song numbers and moods are hand-made, so the results also reflect one person's judgment. Larger systems can show the same pattern when some tastes have far more data than others.
 
 
 

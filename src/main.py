@@ -1,32 +1,41 @@
 """
 Command line runner for the Music Recommender Simulation.
 
-This file helps you quickly run and test your recommender.
+Loads the song catalog, scores every song against a default user profile,
+and prints the top recommendations with the reasons behind each score.
 
-You will implement the functions in recommender.py:
-- load_songs
-- score_song
-- recommend_songs
+Run from the project root with: python -m src.main
 """
 
-from recommender import load_songs, recommend_songs
+from src.recommender import load_songs, recommend_songs
 
 
 def main() -> None:
-    songs = load_songs("data/songs.csv") 
+    songs = load_songs("data/songs.csv")
 
     # Starter example profile
-    user_prefs = {"genre": "pop", "mood": "happy", "energy": 0.8}
+    user_prefs = {
+        "genre": "pop",
+        "mood": "happy",
+        "energy": 0.8,
+        "valence": 0.8,
+        "tempo_bpm": 120,
+    }
 
-    recommendations = recommend_songs(user_prefs, songs, k=5)
+    k = 5
+    recommendations = recommend_songs(user_prefs, songs, k=k)
 
-    print("\nTop recommendations:\n")
-    for rec in recommendations:
-        # You decide the structure of each returned item.
-        # A common pattern is: (song, score, explanation)
-        song, score, explanation = rec
-        print(f"{song['title']} - Score: {score:.2f}")
-        print(f"Because: {explanation}")
+    print(f"Loaded {len(songs)} songs.")
+    print(
+        f"User profile: genre={user_prefs['genre']}, mood={user_prefs['mood']}, "
+        f"energy={user_prefs['energy']}, valence={user_prefs['valence']}, "
+        f"tempo={user_prefs['tempo_bpm']} BPM"
+    )
+    print(f"\nTop {k} recommendations:\n")
+    for rank, (song, score, explanation) in enumerate(recommendations, start=1):
+        print(f"{rank}. {song['title']} by {song['artist']}  (Score: {score:.2f})")
+        for reason in explanation.split("; "):
+            print(f"   - {reason}")
         print()
 
 

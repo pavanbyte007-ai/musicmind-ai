@@ -13,3 +13,8 @@ venv/
 
 # Pytest cache
 .pytest_cache/
+
+# Run logs (results/ is committed; logs are not)
+logs/
+.env
+.streamlit/secrets.toml

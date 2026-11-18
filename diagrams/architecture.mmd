@@ -1,0 +1,31 @@
+flowchart TD
+    USER["User request in plain English<br/>(Streamlit app.py or scripts/demo.py)"] --> IG
+
+    subgraph IN["Input guardrails - src/guardrails.py"]
+        IG["check_input<br/>empty, over 500 chars, prompt injection, non-music"]
+    end
+    IG -->|blocked| BLOCKED["status: blocked<br/>message shown, nothing parsed,<br/>nothing sent to Claude"]
+    IG -->|passed| CHOOSE{"parse_preferences<br/>src/parser.py"}
+
+    CHOOSE -->|"default, offline"| RULES["parse_rules<br/>synonyms, negation, numbers, tempo cues"]
+    CHOOSE -->|"optional: anthropic package + API key"| CLAUDE["parse_with_claude<br/>forced tool call, 10 s timeout"]
+    CLAUDE -->|"error, timeout or bad reply"| RULES
+
+    RULES --> VALIDATE
+    CLAUDE --> VALIDATE
+    VALIDATE["validate_preferences<br/>clamp ranges, drop invalid values,<br/>snap to catalog labels, detect conflicts,<br/>set confidence"]
+    VALIDATE -->|"nothing recognized"| CLARIFY["status: needs_clarification<br/>hint shown, no songs"]
+    VALIDATE -->|"preferences"| RETRIEVE
+
+    CATALOG[("data/songs.csv<br/>40 songs, 22 synthetic")] --> RETRIEVE
+    RETRIEVE["retrieve - src/retriever.py<br/>songs with similar genre or mood<br/>plus the baseline top N"]
+    RETRIEVE --> RANK["rank - src/ranker.py<br/>baseline = original score_song<br/>optional: similar-label bonus, artist variety"]
+    RANK --> EXPLAIN["explain - src/explain.py<br/>score breakdown, fit percent, summary"]
+    EXPLAIN --> OUTGUARD["filter_to_catalog<br/>output guardrail: only unchanged catalog songs"]
+    OUTGUARD --> RESULT["PipelineResult - src/pipeline.py<br/>status ok, low_confidence or no_results<br/>recommendations, messages, confidence"]
+    RESULT --> UI["Streamlit cards - app.py<br/>score, fit percent, parser confidence, warnings"]
+
+    LOGS["src/logging_utils.py<br/>structured JSON logs, API keys redacted"] -.-> CHOOSE
+    LOGS -.-> RESULT
+    TESTS["pytest suite and scripts/reliability.py<br/>writes results/"] -.->|"exercises"| IG
+    TESTS -.-> RESULT

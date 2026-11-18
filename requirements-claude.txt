@@ -1,0 +1,8 @@
+# OPTIONAL: enables the Claude preference parser. The default install does not need this.
+#   .\.venv\Scripts\python.exe -m pip install -r requirements-claude.txt
+# Also set the ANTHROPIC_API_KEY environment variable and choose "Claude (optional)" in the app sidebar.
+# NOTE: the anthropic package is deliberately NOT pinned here: it was never installed in the tested
+# environment, and the live API path has only been tested with mocked clients. Pin the version you
+# verify yourself once you have run it against the real API.
+-r requirements.txt
+anthropic
